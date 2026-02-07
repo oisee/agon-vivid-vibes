@@ -31,8 +31,8 @@ MAJOR_R = 1.0    # distance from centre of tube to centre of torus
 MINOR_R = 0.4    # radius of tube
 
 # -- Camera / projection --
-CAMERA_Z = -4.0  # camera position (looking toward +Z)
-FOV_FACTOR = 200  # perspective scale factor
+CAMERA_Z = -3.0  # camera position (looking toward +Z)
+FOV_FACTOR = 300  # perspective scale factor
 
 # -- Lighting --
 LIGHT_DIR = np.array([0.3, 0.5, -0.8])  # direction TO the light (near camera)
@@ -72,8 +72,8 @@ def make_torus_mesh(segments_u: int, segments_v: int) -> tuple[np.ndarray, list[
             b = ni * segments_v + j
             c = ni * segments_v + nj
             d = i * segments_v + nj
-            triangles.append((a, b, c))
-            triangles.append((a, c, d))
+            triangles.append((a, c, b))
+            triangles.append((a, d, c))
 
     return vertices, triangles
 
@@ -106,13 +106,15 @@ def rotation_matrix(angle_x: float, angle_y: float) -> np.ndarray:
 
 
 def project(point: np.ndarray) -> tuple[int, int]:
-    """Perspective project a 3D point to screen coordinates."""
-    # Camera looks toward +Z, camera at CAMERA_Z on Z axis
+    """Perspective project a 3D point to screen coordinates (clamped)."""
     z = point[2] - CAMERA_Z
     if z < 0.1:
         z = 0.1
     x = int(point[0] * FOV_FACTOR / z + SCREEN_W / 2)
     y = int(-point[1] * FOV_FACTOR / z + SCREEN_H / 2)
+    # Clamp to screen bounds to prevent VDP fill overflow
+    x = max(-32, min(351, x))
+    y = max(-32, min(271, y))
     return x, y
 
 
@@ -165,7 +167,8 @@ def generate_frame(vertices: np.ndarray,
     draw_list.sort(key=lambda t: -t[0])
 
     s = VDPStream()
-    s.clg()
+    s.cls()   # clear text area (prevents stray text)
+    s.clg()   # clear graphics area
     canvas_tris = []
 
     for avg_z, idx in draw_list:
@@ -355,6 +358,9 @@ def run_preview(frames_iter, total_frames: int, port: int, verbose: bool = False
                 break
             frame_bytes = frame_stream.get_bytes()
             server.send_vdu(frame_bytes)
+            # Wait multiple vsyncs — large frames need time to render
+            server.wait_vsync()
+            server.wait_vsync()
             server.wait_vsync()
             frame_num += 1
             if frame_num % 60 == 0:
