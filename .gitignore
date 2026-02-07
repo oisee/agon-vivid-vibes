@@ -17,3 +17,13 @@ sdcard/
 # AgDev build artifacts
 src/bin/
 src/obj/
+
+# Python
+__pycache__/
+
+# Generated previews
+tools/*.html
+tools/*.vdp
+
+# Reference repos
+ref/
