@@ -1,0 +1,19 @@
+# Build outputs
+bin/*.bin
+obj/
+*.o
+
+# Temporary files
+sdcard/
+*.tmp
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# AgDev build artifacts
+src/bin/
+src/obj/
