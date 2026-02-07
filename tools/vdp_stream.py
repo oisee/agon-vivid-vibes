@@ -61,6 +61,15 @@ class VDPStream:
         self._buf.append(16)
         return self
 
+    def swap_buffers(self) -> "VDPStream":
+        """VDU 23, 0, &C3 — swap double-buffer at next vsync.
+
+        Only works in double-buffered modes (mode + 128, e.g. MODE 136).
+        Atomically swaps the back buffer to screen — no tearing.
+        """
+        self._buf.extend((23, 0, 0xC3))
+        return self
+
     def set_logical_coords(self, on: bool = True) -> "VDPStream":
         """VDU 23, 0, &C0, n — enable (1) or disable (0) logical coordinate scaling.
 

@@ -358,8 +358,7 @@ def run_preview(frames_iter, total_frames: int, port: int, verbose: bool = False
                 break
             frame_bytes = frame_stream.get_bytes()
             server.send_vdu(frame_bytes)
-            # Wait multiple vsyncs — large frames need time to render
-            server.wait_vsync()
+            # Wait for VDP to finish drawing
             server.wait_vsync()
             server.wait_vsync()
             frame_num += 1
@@ -381,8 +380,8 @@ def main():
                         help="Save to .vdp file")
     parser.add_argument("--port", type=int, default=5001,
                         help="TCP port for preview (default: 5001)")
-    parser.add_argument("--segments", type=int, default=12,
-                        help="Torus tessellation segments (default: 12)")
+    parser.add_argument("--segments", type=int, default=8,
+                        help="Torus tessellation segments (default: 8)")
     parser.add_argument("--frames", type=int, default=360,
                         help="Number of frames to generate (default: 360)")
     parser.add_argument("--fps", type=int, default=30,
@@ -404,7 +403,7 @@ def main():
     def frame_generator():
         for i in range(num_frames):
             angle_y = 2 * math.pi * i / num_frames
-            angle_x = 0.4 * math.sin(2 * math.pi * i / num_frames * 2)
+            angle_x = 0.8 + 0.3 * math.sin(2 * math.pi * i / num_frames * 2)
             rot = rotation_matrix(angle_x, angle_y)
             yield generate_frame(vertices, triangles, rot)
 
