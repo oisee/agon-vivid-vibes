@@ -10,6 +10,40 @@ VDU reference: https://agonconsole8.github.io/agon-docs/VDP.html
 import struct
 
 
+# -- Agon 64-colour palette helpers --
+#
+# Mode 8 has 64 colours. The palette uses the BBC Micro interleaved bit scheme:
+#   bit 0 = R high, bit 1 = G high, bit 2 = B high   (same as BBC 8-colour)
+#   bit 3 = R low,  bit 4 = G low,  bit 5 = B low
+#
+# Each channel is 2 bits (0-3), with the high bit giving coarse intensity
+# and the low bit giving fine intensity.
+
+def agon_rgb(r: int, g: int, b: int) -> int:
+    """Convert 2-bit RGB components (0-3 each) to Agon 64-colour palette index."""
+    r_hi, r_lo = (r >> 1) & 1, r & 1
+    g_hi, g_lo = (g >> 1) & 1, g & 1
+    b_hi, b_lo = (b >> 1) & 1, b & 1
+    return (b_lo << 5) | (g_lo << 4) | (r_lo << 3) | (b_hi << 2) | (g_hi << 1) | r_hi
+
+
+def agon_index_to_rgb(idx: int) -> tuple[int, int, int]:
+    """Convert Agon 64-colour palette index to 2-bit RGB components (0-3 each)."""
+    r_hi = (idx >> 0) & 1
+    g_hi = (idx >> 1) & 1
+    b_hi = (idx >> 2) & 1
+    r_lo = (idx >> 3) & 1
+    g_lo = (idx >> 4) & 1
+    b_lo = (idx >> 5) & 1
+    return (r_hi << 1) | r_lo, (g_hi << 1) | g_lo, (b_hi << 1) | b_lo
+
+
+def agon_index_to_hex(idx: int) -> str:
+    """Convert Agon 64-colour palette index to '#rrggbb' hex string."""
+    r, g, b = agon_index_to_rgb(idx)
+    return f"#{r * 85:02x}{g * 85:02x}{b * 85:02x}"
+
+
 class VDPStream:
     """Accumulates VDU commands and produces a raw byte stream."""
 
@@ -125,6 +159,23 @@ class VDPStream:
     def triangle(self, x: int, y: int) -> "VDPStream":
         """VDU 25, 85, x; y; — draw filled triangle (third vertex)."""
         self._plot_xy(85, x, y)
+        return self
+
+    def filled_rect(self, x1: int, y1: int, x2: int, y2: int) -> "VDPStream":
+        """MOVE(corner1), PLOT 101(corner2) — filled rectangle, 12 bytes."""
+        self.move(x1, y1)
+        self._plot_xy(101, x2, y2)
+        return self
+
+    def point(self, x: int, y: int) -> "VDPStream":
+        """PLOT 69 — plot single pixel, 6 bytes."""
+        self._plot_xy(69, x, y)
+        return self
+
+    def line(self, x1: int, y1: int, x2: int, y2: int) -> "VDPStream":
+        """MOVE(start), DRAW(end) — line, 12 bytes."""
+        self.move(x1, y1)
+        self.draw(x2, y2)
         return self
 
     def filled_triangle(self, x1: int, y1: int,

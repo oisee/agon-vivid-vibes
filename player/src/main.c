@@ -1,0 +1,212 @@
+/*
+ * demo player — sequential cube/torus switcher with 3 bytebeat songs
+ *
+ * Song 1: JS-256 engine — base-36 melody with echo (computed via LUT)
+ * Songs 2-3: classic integer bytebeat formulas
+ * All computed on the eZ80 at runtime, uploaded to VDP as samples.
+ *
+ * Song cycle: 1-1-2-2-3-3 repeat.
+ * Space to exit.
+ */
+
+#include <stdint.h>
+#include <agon/mos.h>
+#include <agon/vdp.h>
+#include "lzss.h"
+
+extern uint8_t setup_data[];
+extern uint8_t setup_data_end[];
+extern uint8_t cube_compressed[];
+extern uint8_t cube_compressed_end[];
+extern uint8_t torus_compressed[];
+extern uint8_t torus_compressed_end[];
+
+#define BB_SAMPLES 65536
+#define NUM_SONGS  3
+
+static uint8_t decomp_buf[131072];
+static uint8_t vdu_buf[1536];
+static uint8_t swap_cmd[] = { 23, 0, 0xC3 };
+
+/* ---- JS-256 engine tables ---- */
+
+/* r=t/1.205, a=r=>(t*2^(parseInt(melody[(r>>13)%32],36)/12)/2.67%128
+   +(r>>6&127)&128)*(1-r%8192/8192),
+   a(r)+a(r-d)/2+a(r-2d)/4+a(r-3d)/8  where d=12288 */
+
+static const char js_melody[] = "99C9E9GECCGCJCGC77B7C7EC5595C5CB";
+
+/* 2^(n/12) / 2.67 * 128, for n=0..19 */
+static const uint8_t js_freq[20] = {
+    48, 51, 54, 57, 60, 64, 68, 72, 76, 81,
+    85, 90, 96, 102, 108, 114, 121, 128, 136, 144
+};
+
+static uint8_t js_b36(char c)
+{
+    return (c <= '9') ? (uint8_t)(c - '0') : (uint8_t)(c - 'A' + 10);
+}
+
+static uint8_t js_voice(uint24_t t, int r)
+{
+    if (r < 0) return 0;
+
+    uint8_t n = js_b36(js_melody[((unsigned)r >> 13) & 31]);
+    uint8_t saw = (uint8_t)(((uint24_t)t * js_freq[n]) >> 7) & 127;
+    uint8_t sub = ((unsigned)r >> 6) & 127;
+
+    if (!((saw + sub) & 128))
+        return 0;
+
+    uint16_t env = 8192 - ((unsigned)r & 8191);
+    return (uint8_t)(env >> 6);  /* 0..128 */
+}
+
+/* ---- end JS-256 ---- */
+
+static uint16_t read_u16(const uint8_t *p)
+{
+    return p[0] | ((uint16_t)p[1] << 8);
+}
+
+static uint24_t decompress(const uint8_t *src, uint24_t src_len, uint8_t *dst)
+{
+    uint24_t decomp_size = src[0] |
+                           ((uint24_t)src[1] << 8) |
+                           ((uint24_t)src[2] << 16);
+    lzss_decompress(src + 3, src_len - 3, dst, decomp_size);
+    return decomp_size;
+}
+
+static void init_bytebeat(void)
+{
+    /* Song 1: JS-256 — base-36 melody with echo */
+    for (uint24_t t = 0; t < BB_SAMPLES; t++) {
+        int r = (int)((t * 213) >> 8);   /* t / 1.205 */
+        uint8_t val = js_voice(t, r) +
+                      (js_voice(t, r - 12288) >> 1) +
+                      (js_voice(t, r - 24576) >> 2) +
+                      (js_voice(t, r - 36864) >> 3);
+        decomp_buf[t] = val ^ 0x80;
+    }
+    vdp_audio_load_sample(-1, BB_SAMPLES, decomp_buf);
+
+    /* Song 2: t*((t&4096?6:16)+(1&t>>14))>>(3&t>>8)|t>>(t&4096?3:4) */
+    for (uint24_t t = 0; t < BB_SAMPLES; t++) {
+        uint24_t mul = ((t & 4096) ? 6 : 16) + (1 & (t >> 14));
+        uint24_t sh = 3 & (t >> 8);
+        uint24_t rs = (t & 4096) ? 3 : 4;
+        decomp_buf[t] = (uint8_t)(((t * mul) >> sh) | (t >> rs)) ^ 0x80;
+    }
+    vdp_audio_load_sample(-2, BB_SAMPLES, decomp_buf);
+
+    /* Song 3: t*(t>>(t&4096?t*t>>12:t>>12))|t<<(t>>8)|t>>4 */
+    for (uint24_t t = 0; t < BB_SAMPLES; t++) {
+        uint24_t s = (t & 4096) ? ((t * t) >> 12) : (t >> 12);
+        decomp_buf[t] = (uint8_t)((t * (t >> s)) | (t << (t >> 8)) | (t >> 4)) ^ 0x80;
+    }
+    vdp_audio_load_sample(-3, BB_SAMPLES, decomp_buf);
+
+    for (int i = -1; i >= -NUM_SONGS; i--) {
+        vdp_audio_set_sample_repeat_start(i, 0);
+        vdp_audio_set_sample_repeat_length(i, BB_SAMPLES);
+    }
+    vdp_audio_sample_rate(0, 8000);
+}
+
+static void play_song(int sample)
+{
+    vdp_audio_set_waveform(0, sample);
+    vdp_audio_play_note(0, 127, 0, -1);
+}
+
+static uint8_t play_effect(uint8_t *data, uint8_t cycles)
+{
+    uint8_t *d = data;
+    uint16_t num_frames = read_u16(d); d += 2;
+    uint8_t  max_tris   = *d++;
+
+    uint8_t *tri_counts = d;  d += num_frames;
+
+    uint16_t col_len = (uint16_t)max_tris * num_frames;
+    uint8_t *col_colors = d;   d += col_len;
+    uint8_t *col_x1_lo  = d;   d += col_len;
+    uint8_t *col_x1_hi  = d;   d += col_len;
+    uint8_t *col_y1     = d;   d += col_len;
+    uint8_t *col_x2_lo  = d;   d += col_len;
+    uint8_t *col_x2_hi  = d;   d += col_len;
+    uint8_t *col_y2     = d;   d += col_len;
+    uint8_t *col_x3_lo  = d;   d += col_len;
+    uint8_t *col_x3_hi  = d;   d += col_len;
+    uint8_t *col_y3     = d;
+
+    for (uint8_t cycle = 0; cycle < cycles; cycle++) {
+        for (uint16_t f = 0; f < num_frames; f++) {
+            uint8_t ntris = tri_counts[f];
+            uint8_t *vp = vdu_buf;
+
+            *vp++ = 16;
+
+            for (uint8_t s = 0; s < ntris; s++) {
+                uint16_t idx = (uint16_t)s * num_frames + f;
+
+                *vp++ = 18; *vp++ = 0; *vp++ = col_colors[idx];
+
+                *vp++ = 25; *vp++ = 4;
+                *vp++ = col_x1_lo[idx]; *vp++ = col_x1_hi[idx];
+                *vp++ = col_y1[idx];    *vp++ = 0;
+
+                *vp++ = 25; *vp++ = 4;
+                *vp++ = col_x2_lo[idx]; *vp++ = col_x2_hi[idx];
+                *vp++ = col_y2[idx];    *vp++ = 0;
+
+                *vp++ = 25; *vp++ = 85;
+                *vp++ = col_x3_lo[idx]; *vp++ = col_x3_hi[idx];
+                *vp++ = col_y3[idx];    *vp++ = 0;
+            }
+
+            mos_puts((char *)vdu_buf, (uint24_t)(vp - vdu_buf), 0);
+            mos_puts((char *)swap_cmd, 3, 0);
+            waitvblank();
+            waitvblank();
+
+            if (getsysvar_keyascii() == ' ')
+                return 1;
+        }
+    }
+    return 0;
+}
+
+int main(void)
+{
+    uint24_t setup_len = (uint24_t)(setup_data_end - setup_data);
+    mos_puts((char *)setup_data, setup_len, 0);
+    for (uint8_t i = 0; i < 15; i++)
+        waitvblank();
+
+    init_bytebeat();
+
+    uint24_t cube_size = decompress(cube_compressed,
+                                    (uint24_t)(cube_compressed_end - cube_compressed),
+                                    decomp_buf);
+    uint8_t *torus_data = decomp_buf + cube_size;
+    decompress(torus_compressed,
+               (uint24_t)(torus_compressed_end - torus_compressed),
+               torus_data);
+
+    for (;;) {
+        for (uint8_t song = 0; song < NUM_SONGS; song++) {
+            play_song(-(song + 1));
+            if (play_effect(decomp_buf, 2))
+                goto done;
+            if (play_effect(torus_data, 2))
+                goto done;
+        }
+    }
+done:
+    vdp_audio_set_volume(0, 0);
+    vdp_audio_reset_channel(0);
+    vdp_mode(0);
+    vdp_cursor_enable(1);
+    return 0;
+}

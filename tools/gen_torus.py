@@ -31,7 +31,7 @@ MAJOR_R = 1.0    # distance from centre of tube to centre of torus
 MINOR_R = 0.4    # radius of tube
 
 # -- Camera / projection --
-CAMERA_Z = -3.0  # camera position (looking toward +Z)
+CAMERA_Z = -4.0  # camera position (looking toward +Z)
 FOV_FACTOR = 300  # perspective scale factor
 
 # -- Lighting --
@@ -145,6 +145,36 @@ def agon_colour_to_rgb(col: int) -> str:
     return f"#{r * 85:02x}{g * 85:02x}{b * 85:02x}"
 
 
+def _tri_visible(coverage, x1, y1, x2, y2, x3, y3):
+    """Check if triangle is visible (not fully occluded). If visible, mark coverage."""
+    min_x = max(0, min(x1, x2, x3))
+    max_x = min(SCREEN_W - 1, max(x1, x2, x3))
+    min_y = max(0, min(y1, y2, y3))
+    max_y = min(SCREEN_H - 1, max(y1, y2, y3))
+    if min_x >= max_x or min_y >= max_y:
+        return False
+
+    ys, xs = np.mgrid[min_y:max_y+1, min_x:max_x+1]
+    # Edge functions (barycentric sign test)
+    d1 = (xs - x2) * (y1 - y2) - (x1 - x2) * (ys - y2)
+    d2 = (xs - x3) * (y2 - y3) - (x2 - x3) * (ys - y3)
+    d3 = (xs - x1) * (y3 - y1) - (x3 - x1) * (ys - y1)
+    inside = ((d1 >= 0) & (d2 >= 0) & (d3 >= 0)) | \
+             ((d1 <= 0) & (d2 <= 0) & (d3 <= 0))
+
+    tri_pixels = np.count_nonzero(inside)
+    if tri_pixels == 0:
+        return False
+
+    cov_region = coverage[min_y:max_y+1, min_x:max_x+1]
+    covered = np.count_nonzero(cov_region[inside])
+    if covered >= tri_pixels:
+        return False  # fully occluded
+
+    cov_region[inside] = 1
+    return True
+
+
 def generate_frame(vertices: np.ndarray,
                    triangles: list[tuple[int, int, int]],
                    rot: np.ndarray) -> tuple[VDPStream, list[dict]]:
@@ -164,19 +194,26 @@ def generate_frame(vertices: np.ndarray,
 
         draw_list.append((avg_z, idx))
 
-    draw_list.sort(key=lambda t: -t[0])
+    draw_list.sort(key=lambda t: -t[0])  # back-to-front
+
+    # Occlusion culling: process front-to-back, skip fully hidden triangles
+    coverage = np.zeros((SCREEN_H, SCREEN_W), dtype=np.uint8)
+    visible = []
+    for avg_z, idx in reversed(draw_list):  # front-to-back
+        a, b, c = triangles[idx]
+        x1, y1 = project(transformed[a])
+        x2, y2 = project(transformed[b])
+        x3, y3 = project(transformed[c])
+        if _tri_visible(coverage, x1, y1, x2, y2, x3, y3):
+            visible.append((avg_z, idx, x1, y1, x2, y2, x3, y3))
+    visible.reverse()  # back to back-to-front for painter's
 
     s = VDPStream()
     s.cls()   # clear text area (prevents stray text)
     s.clg()   # clear graphics area
     canvas_tris = []
 
-    for avg_z, idx in draw_list:
-        a, b, c = triangles[idx]
-        x1, y1 = project(transformed[a])
-        x2, y2 = project(transformed[b])
-        x3, y3 = project(transformed[c])
-
+    for avg_z, idx, x1, y1, x2, y2, x3, y3 in visible:
         dot = float(np.dot(normals[idx], LIGHT_DIR))
         lum = max(0.0, dot) * (1.0 - AMBIENT) + AMBIENT
         col = luminance_to_colour(lum)
