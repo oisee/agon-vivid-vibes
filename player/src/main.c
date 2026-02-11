@@ -1,11 +1,12 @@
 /*
- * demo player — sequential cube/torus switcher with 3 bytebeat songs
+ * demo player — sequential cube/torus switcher with 4 bytebeat songs
  *
  * Song 1: JS-256 engine — base-36 melody with echo (computed via LUT)
  * Songs 2-3: classic integer bytebeat formulas
+ * Song 4: BPM=160 arpeggiator with XOR rhythm gate
  * All computed on the eZ80 at runtime, uploaded to VDP as samples.
  *
- * Song cycle: 1-1-2-2-3-3 repeat.
+ * Song cycle: 1-1-2-2-3-3-4-4 repeat.
  * Space to exit.
  */
 
@@ -22,7 +23,7 @@ extern uint8_t torus_compressed[];
 extern uint8_t torus_compressed_end[];
 
 #define BB_SAMPLES 65536
-#define NUM_SONGS  3
+#define NUM_SONGS  4
 
 static uint8_t decomp_buf[131072];
 static uint8_t vdu_buf[1536];
@@ -63,6 +64,16 @@ static uint8_t js_voice(uint24_t t, int r)
 }
 
 /* ---- end JS-256 ---- */
+
+/* ---- BPM=160 arpeggiator tables (Song 4) ---- */
+
+/* pitch * 256 (8.8 fixed): [1, 2, 3, 4, 4.5, 4.75, 6, 8] */
+static const uint16_t bpm_pitch[8] = {
+    256, 512, 768, 1024, 1152, 1216, 1536, 2048
+};
+
+/* (pitch2 / 8) * 256 (8.8 fixed): [0.5, 0.5625, 0.59375, 0.6667] */
+static const uint8_t bpm_pitch2[4] = { 128, 144, 152, 171 };
 
 static uint16_t read_u16(const uint8_t *p)
 {
@@ -106,6 +117,24 @@ static void init_bytebeat(void)
         decomp_buf[t] = (uint8_t)((t * (t >> s)) | (t << (t >> 8)) | (t >> 4)) ^ 0x80;
     }
     vdp_audio_load_sample(-3, BB_SAMPLES, decomp_buf);
+
+    /* Song 4: BPM=160 arpeggiator — 8-step pitch + XOR rhythm gate */
+    for (uint24_t t = 0; t < BB_SAMPLES; t++) {
+        uint24_t tf = t * 11;
+        uint16_t pitch_fp = bpm_pitch[(tf >> 14) & 7];
+        uint8_t pitch2_fp = bpm_pitch2[(tf >> 18) & 3];
+        uint8_t saw = (uint8_t)((t * pitch_fp) >> 8);
+        uint24_t half_tf = tf >> 1;
+        uint16_t a = (uint16_t)(half_tf & 0xFFFF);
+        uint16_t b = (uint16_t)(((half_tf >> 5) ^ (half_tf >> 6)) & 0xFFFF);
+        uint16_t denom = a | b;
+        if (denom == 0) denom = 1;
+        uint24_t pulse = ((uint24_t)saw << 8) / denom;
+        uint8_t main_val = (pulse & 1) ? 128 : 0;
+        uint8_t bass = (uint8_t)((t * (uint24_t)pitch2_fp) >> 8);
+        decomp_buf[t] = (uint8_t)(main_val + (bass >> 1)) ^ 0x80;
+    }
+    vdp_audio_load_sample(-4, BB_SAMPLES, decomp_buf);
 
     for (int i = -1; i >= -NUM_SONGS; i--) {
         vdp_audio_set_sample_repeat_start(i, 0);
