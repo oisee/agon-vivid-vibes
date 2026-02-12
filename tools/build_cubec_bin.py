@@ -102,19 +102,12 @@ def transpose_frames(frames_structured):
             x3_lo.append(t["x3"] & 0xFF); x3_hi.append(t["x3"] >> 8)
             y3.append(t["y3"] & 0xFF)
 
-    def delta_encode(data):
-        if not data:
-            return bytes()
-        out = bytearray([data[0]])
-        for i in range(1, len(data)):
-            out.append((data[i] - data[i - 1]) & 0xFF)
-        return bytes(out)
-
     header = struct.pack("<HB", num_frames, max_tris)
-    columns = [colors, x1_lo, x1_hi, y1, x2_lo, x2_hi, y2, x3_lo, x3_hi, y3]
-    delta_columns = [delta_encode(col) for col in columns]
 
-    blob = header + bytes(tri_counts) + b"".join(delta_columns)
+    blob = header + bytes(tri_counts) + bytes(colors) + \
+           bytes(x1_lo) + bytes(x1_hi) + bytes(y1) + \
+           bytes(x2_lo) + bytes(x2_hi) + bytes(y2) + \
+           bytes(x3_lo) + bytes(x3_hi) + bytes(y3)
     return blob
 
 

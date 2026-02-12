@@ -1,13 +1,12 @@
 /*
- * demo player — sequential cube/torus switcher with 4 bytebeat songs
+ * demo player — sequential cube/torus switcher with 2 bytebeat songs
  *
  * Song 1: JS-256 engine — base-36 melody with echo (computed via LUT)
- * Songs 2-3: classic integer bytebeat formulas
- * Song 4: BPM=160 arpeggiator with XOR rhythm gate
+ * Song 2: BPM=160 arpeggiator with XOR rhythm gate
  * All computed on the eZ80 at runtime, uploaded to VDP as samples.
+ * Frames pre-loaded into VDP buffers for 9 bytes/frame playback.
  *
- * Song cycle: 1-1-2-2-3-3-4-4 repeat.
- * Space to exit.
+ * Song cycle: 1-1-2-2 repeat. Space to exit.
  */
 
 #include <stdint.h>
@@ -23,7 +22,7 @@ extern uint8_t torus_compressed[];
 extern uint8_t torus_compressed_end[];
 
 #define BB_SAMPLES 65536
-#define NUM_SONGS  4
+#define NUM_SONGS  2
 
 static uint8_t decomp_buf[131072];
 static uint8_t vdu_buf[1536];
@@ -102,23 +101,7 @@ static void init_bytebeat(void)
     }
     vdp_audio_load_sample(-1, BB_SAMPLES, decomp_buf);
 
-    /* Song 2: t*((t&4096?6:16)+(1&t>>14))>>(3&t>>8)|t>>(t&4096?3:4) */
-    for (uint24_t t = 0; t < BB_SAMPLES; t++) {
-        uint24_t mul = ((t & 4096) ? 6 : 16) + (1 & (t >> 14));
-        uint24_t sh = 3 & (t >> 8);
-        uint24_t rs = (t & 4096) ? 3 : 4;
-        decomp_buf[t] = (uint8_t)(((t * mul) >> sh) | (t >> rs)) ^ 0x80;
-    }
-    vdp_audio_load_sample(-2, BB_SAMPLES, decomp_buf);
-
-    /* Song 3: t*(t>>(t&4096?t*t>>12:t>>12))|t<<(t>>8)|t>>4 */
-    for (uint24_t t = 0; t < BB_SAMPLES; t++) {
-        uint24_t s = (t & 4096) ? ((t * t) >> 12) : (t >> 12);
-        decomp_buf[t] = (uint8_t)((t * (t >> s)) | (t << (t >> 8)) | (t >> 4)) ^ 0x80;
-    }
-    vdp_audio_load_sample(-3, BB_SAMPLES, decomp_buf);
-
-    /* Song 4: BPM=160 arpeggiator — 8-step pitch + XOR rhythm gate */
+    /* Song 2: BPM=160 arpeggiator — 8-step pitch + XOR rhythm gate */
     for (uint24_t t = 0; t < BB_SAMPLES; t++) {
         uint24_t tf = t * 11;
         uint16_t pitch_fp = bpm_pitch[(tf >> 14) & 7];
@@ -134,7 +117,7 @@ static void init_bytebeat(void)
         uint8_t bass = (uint8_t)((t * (uint24_t)pitch2_fp) >> 8);
         decomp_buf[t] = (uint8_t)(main_val + (bass >> 1)) ^ 0x80;
     }
-    vdp_audio_load_sample(-4, BB_SAMPLES, decomp_buf);
+    vdp_audio_load_sample(-2, BB_SAMPLES, decomp_buf);
 
     for (int i = -1; i >= -NUM_SONGS; i--) {
         vdp_audio_set_sample_repeat_start(i, 0);
@@ -247,13 +230,12 @@ static void clear_vdp_buffers(void)
 
 int main(void)
 {
-    uint24_t setup_len = (uint24_t)(setup_data_end - setup_data);
-    mos_puts((char *)setup_data, setup_len, 0);
-    for (uint8_t i = 0; i < 15; i++)
-        waitvblank();
+    /* Clear any stale VDP buffers from a previous run */
+    clear_vdp_buffers();
 
-    /* Compute bytebeat songs (uses decomp_buf as scratch) */
-    init_bytebeat();
+    /* Sound disabled for debugging */
+
+    mos_puts("vivid: decompressing frames...\r\n", 31, 0);
 
     /* Decompress frame data into decomp_buf */
     uint24_t cube_size = decompress(cube_compressed,
@@ -264,11 +246,18 @@ int main(void)
                (uint24_t)(torus_compressed_end - torus_compressed),
                torus_data);
 
+    mos_puts("vivid: uploading to VDP...\r\n", 28, 0);
+
     /* Upload all frames as VDP buffers — one-time cost over UART.
      * After this, playback is just 9 bytes/frame (call + swap). */
-    clear_vdp_buffers();
     uint16_t cube_nframes  = upload_effect(decomp_buf, 1);
     uint16_t torus_nframes = upload_effect(torus_data, 1000);
+
+    /* Now switch to graphics mode */
+    uint24_t setup_len = (uint24_t)(setup_data_end - setup_data);
+    mos_puts((char *)setup_data, setup_len, 0);
+    for (uint8_t i = 0; i < 5; i++)
+        waitvblank();
 
     for (;;) {
         for (uint8_t song = 0; song < NUM_SONGS; song++) {
