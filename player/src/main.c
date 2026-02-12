@@ -149,7 +149,10 @@ static void play_song(int sample)
     vdp_audio_play_note(0, 127, 0, -1);
 }
 
-static uint8_t play_effect(uint8_t *data, uint8_t cycles)
+/* Upload all frames of an effect as VDP buffered commands.
+ * Each frame becomes VDP buffer base_id+0 .. base_id+N-1.
+ * Returns number of frames. */
+static uint16_t upload_effect(uint8_t *data, uint16_t base_id)
 {
     uint8_t *d = data;
     uint16_t num_frames = read_u16(d); d += 2;
@@ -169,34 +172,63 @@ static uint8_t play_effect(uint8_t *data, uint8_t cycles)
     uint8_t *col_x3_hi  = d;   d += col_len;
     uint8_t *col_y3     = d;
 
+    for (uint16_t f = 0; f < num_frames; f++) {
+        uint8_t ntris = tri_counts[f];
+        /* Build VDU payload at offset 8, leaving room for buffer header */
+        uint8_t *vp = vdu_buf + 8;
+
+        *vp++ = 16;  /* CLG */
+
+        for (uint8_t s = 0; s < ntris; s++) {
+            uint16_t idx = (uint16_t)s * num_frames + f;
+
+            *vp++ = 18; *vp++ = 0; *vp++ = col_colors[idx];
+
+            *vp++ = 25; *vp++ = 4;
+            *vp++ = col_x1_lo[idx]; *vp++ = col_x1_hi[idx];
+            *vp++ = col_y1[idx];    *vp++ = 0;
+
+            *vp++ = 25; *vp++ = 4;
+            *vp++ = col_x2_lo[idx]; *vp++ = col_x2_hi[idx];
+            *vp++ = col_y2[idx];    *vp++ = 0;
+
+            *vp++ = 25; *vp++ = 85;
+            *vp++ = col_x3_lo[idx]; *vp++ = col_x3_hi[idx];
+            *vp++ = col_y3[idx];    *vp++ = 0;
+        }
+
+        uint16_t payload_len = (uint16_t)(vp - (vdu_buf + 8));
+        uint16_t id = base_id + f;
+
+        /* VDU 23, 0, &A0, id_lo, id_hi, 0, len_lo, len_hi, <payload> */
+        vdu_buf[0] = 23;
+        vdu_buf[1] = 0;
+        vdu_buf[2] = 0xA0;
+        vdu_buf[3] = (uint8_t)(id & 0xFF);
+        vdu_buf[4] = (uint8_t)(id >> 8);
+        vdu_buf[5] = 0;   /* command 0: write to buffer */
+        vdu_buf[6] = (uint8_t)(payload_len & 0xFF);
+        vdu_buf[7] = (uint8_t)(payload_len >> 8);
+
+        mos_puts((char *)vdu_buf, (uint24_t)(vp - vdu_buf), 0);
+    }
+    return num_frames;
+}
+
+/* Play an effect by calling pre-uploaded VDP buffers.
+ * 9 bytes/frame (call + swap) instead of ~1.5KB streamed. */
+static uint8_t play_effect(uint16_t base_id, uint16_t num_frames, uint8_t cycles)
+{
+    uint8_t call_cmd[6] = { 23, 0, 0xA0, 0, 0, 1 };
+
     for (uint8_t cycle = 0; cycle < cycles; cycle++) {
         for (uint16_t f = 0; f < num_frames; f++) {
-            uint8_t ntris = tri_counts[f];
-            uint8_t *vp = vdu_buf;
+            uint16_t id = base_id + f;
+            call_cmd[3] = (uint8_t)(id & 0xFF);
+            call_cmd[4] = (uint8_t)(id >> 8);
 
-            *vp++ = 16;
-
-            for (uint8_t s = 0; s < ntris; s++) {
-                uint16_t idx = (uint16_t)s * num_frames + f;
-
-                *vp++ = 18; *vp++ = 0; *vp++ = col_colors[idx];
-
-                *vp++ = 25; *vp++ = 4;
-                *vp++ = col_x1_lo[idx]; *vp++ = col_x1_hi[idx];
-                *vp++ = col_y1[idx];    *vp++ = 0;
-
-                *vp++ = 25; *vp++ = 4;
-                *vp++ = col_x2_lo[idx]; *vp++ = col_x2_hi[idx];
-                *vp++ = col_y2[idx];    *vp++ = 0;
-
-                *vp++ = 25; *vp++ = 85;
-                *vp++ = col_x3_lo[idx]; *vp++ = col_x3_hi[idx];
-                *vp++ = col_y3[idx];    *vp++ = 0;
-            }
-
-            mos_puts((char *)vdu_buf, (uint24_t)(vp - vdu_buf), 0);
+            mos_puts((char *)call_cmd, 6, 0);
             mos_puts((char *)swap_cmd, 3, 0);
-            waitvblank();
             waitvblank();
 
             if (getsysvar_keyascii() == ' ')
@@ -206,6 +238,13 @@ static uint8_t play_effect(uint8_t *data, uint8_t cycles)
     return 0;
 }
 
+static void clear_vdp_buffers(void)
+{
+    /* VDU 23, 0, &A0, &FF, &FF, 2 — clear ALL VDP buffers */
+    uint8_t cmd[] = { 23, 0, 0xA0, 0xFF, 0xFF, 2 };
+    mos_puts((char *)cmd, 6, 0);
+}
+
 int main(void)
 {
     uint24_t setup_len = (uint24_t)(setup_data_end - setup_data);
@@ -213,8 +252,10 @@ int main(void)
     for (uint8_t i = 0; i < 15; i++)
         waitvblank();
 
+    /* Compute bytebeat songs (uses decomp_buf as scratch) */
     init_bytebeat();
 
+    /* Decompress frame data into decomp_buf */
     uint24_t cube_size = decompress(cube_compressed,
                                     (uint24_t)(cube_compressed_end - cube_compressed),
                                     decomp_buf);
@@ -223,18 +264,25 @@ int main(void)
                (uint24_t)(torus_compressed_end - torus_compressed),
                torus_data);
 
+    /* Upload all frames as VDP buffers — one-time cost over UART.
+     * After this, playback is just 9 bytes/frame (call + swap). */
+    clear_vdp_buffers();
+    uint16_t cube_nframes  = upload_effect(decomp_buf, 1);
+    uint16_t torus_nframes = upload_effect(torus_data, 1000);
+
     for (;;) {
         for (uint8_t song = 0; song < NUM_SONGS; song++) {
             play_song(-(song + 1));
-            if (play_effect(decomp_buf, 2))
+            if (play_effect(1, cube_nframes, 2))
                 goto done;
-            if (play_effect(torus_data, 2))
+            if (play_effect(1000, torus_nframes, 2))
                 goto done;
         }
     }
 done:
     vdp_audio_set_volume(0, 0);
     vdp_audio_reset_channel(0);
+    clear_vdp_buffers();
     vdp_mode(0);
     vdp_cursor_enable(1);
     return 0;
