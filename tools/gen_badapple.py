@@ -146,8 +146,8 @@ def pack_animation(codebook, encoded_frames, tiles_w, tiles_h, fps):
     return b"".join(parts)
 
 
-def generate_html(blob, width, height, tiles_w, tiles_h, fps):
-    """Generate self-contained HTML player."""
+def generate_html(blob, width, height, tiles_w, tiles_h, fps, par=1.0):
+    """Generate self-contained HTML player. par = pixel aspect ratio (height/width)."""
     # Compress with zlib for smaller embedding
     compressed = zlib.compress(blob, 9)
     b64_data = base64.b64encode(compressed).decode('ascii')
@@ -156,7 +156,7 @@ def generate_html(blob, width, height, tiles_w, tiles_h, fps):
 <html>
 <head>
 <meta charset="utf-8">
-<title>Bad Apple — Tile Codebook Player (256x192)</title>
+<title>Bad Apple — Tile Codebook Player ({width}x{height})</title>
 <style>
   body {{ margin: 0; background: #000; display: flex; justify-content: center;
          align-items: center; min-height: 100vh; flex-direction: column; }}
@@ -246,12 +246,14 @@ inflate(compressed).then(blob => {{
     frames.push(curr);
   }}
 
-  // Canvas setup
+  // Canvas setup — par (pixel aspect ratio) corrects non-square pixels
+  const par = {par};  // height/width of each pixel (2.0 for Mode 3: 640x240)
   const canvas = document.getElementById('c');
-  const scale = Math.min(Math.floor(window.innerHeight * 0.85 / H),
+  const displayH = H * par;  // corrected display height
+  const scale = Math.min(Math.floor(window.innerHeight * 0.85 / displayH),
                          Math.floor(window.innerWidth * 0.95 / W), 4);
   canvas.width = W * scale;
-  canvas.height = H * scale;
+  canvas.height = Math.round(displayH * scale);
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
@@ -291,7 +293,7 @@ inflate(compressed).then(blob => {{
     }}
 
     offCtx.putImageData(imgData, 0, 0);
-    ctx.drawImage(offscreen, 0, 0, W, H, 0, 0, W * scale, H * scale);
+    ctx.drawImage(offscreen, 0, 0, W, H, 0, 0, canvas.width, canvas.height);
 
     const pct = ((idx / numFrames) * 100).toFixed(1);
     const sec = (idx / fps).toFixed(1);
@@ -335,6 +337,8 @@ def main():
     parser.add_argument("--tile", type=int, default=8)
     parser.add_argument("--codebook", type=int, default=256)
     parser.add_argument("--fps", type=int, default=30)
+    parser.add_argument("--par", type=float, default=0,
+                        help="Pixel aspect ratio (h/w). 0=auto from 4:3 assumption")
     args = parser.parse_args()
 
     tiles_w = args.width // args.tile
@@ -389,9 +393,23 @@ def main():
           file=sys.stderr)
     print(f"Keyframes: {keyframe_count}", file=sys.stderr)
 
+    # Compute pixel aspect ratio for correct display
+    # On a 4:3 display, 320x240 and 640x480 have square pixels (par=1.0)
+    # 640x240 has 2:1 wide pixels (par=2.0 to stretch vertically)
+    if args.par > 0:
+        par = args.par
+    else:
+        # Auto: assume 4:3 display, compute par from resolution
+        display_aspect = 4.0 / 3.0
+        pixel_aspect = (args.width / args.height) / display_aspect
+        par = pixel_aspect  # >1 means wide pixels, stretch Y
+    print(f"Pixel aspect ratio: {par:.2f}" +
+          (" (non-square pixels)" if abs(par - 1.0) > 0.01 else ""),
+          file=sys.stderr)
+
     # Generate HTML
     print("Generating HTML...", file=sys.stderr)
-    html = generate_html(blob, args.width, args.height, tiles_w, tiles_h, args.fps)
+    html = generate_html(blob, args.width, args.height, tiles_w, tiles_h, args.fps, par)
 
     with open(args.html, "w") as f:
         f.write(html)
