@@ -1,0 +1,286 @@
+Archive member included to satisfy reference by file (symbol)
+
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_cursor_enable.o)
+                              obj/main.o (_vdp_cursor_enable)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_volume.o)
+                              obj/main.o (_vdp_audio_set_volume)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_play_note.o)
+                              obj/main.o (_vdp_audio_play_note)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_waveform.o)
+                              obj/main.o (_vdp_audio_set_waveform)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_reset_channel.o)
+                              obj/main.o (_vdp_audio_reset_channel)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_mode.o)
+                              obj/main.o (_vdp_mode)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+                              (__start)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(mos_getsysvar_keyascii.o)
+                              obj/main.o (_getsysvar_keyascii)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(mos_waitvblank.o)
+                              obj/main.o (_waitvblank)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(mos_puts.o)
+                              obj/main.o (_mos_puts)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(smulu.o)
+                              obj/main.o (__smulu)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(ishl.o)
+                              obj/lzss.o (__ishl)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(frameset0.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_cursor_enable.o) (__frameset0)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(imulu.o)
+                              obj/main.o (__imulu)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(indcallhl.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o) (__indcallhl)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(inot.o)
+                              obj/main.o (__inot)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(frameset.o)
+                              obj/lzss.o (__frameset)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(files.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o) (__stdio_init)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_vdu.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_play_note.o) (_vdu_audio_b_w_w)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(free.c.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o) (_free)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(malloc.c.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o) (_malloc)
+/Users/alice/dev/agondev/agondev/lib/libagon.a(sbrk.o)
+                              /Users/alice/dev/agondev/agondev/lib/libagon.a(malloc.c.o) (_sbrk)
+
+There are no discarded input sections
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+USERRAM          0x00040000         0x00070000         rw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+                0x00040000                        RAM_START = 0x40000
+                0x00070000                        RAM_SIZE = 0x70000
+                0x00000000                        _has_exit_handler = 0x0
+                0x00040000                        . = RAM_START
+
+.init           0x00040000      0x1d4
+ *(.init .init.args .init.bss .fini)
+ .init          0x00040000       0xbb /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+                0x00040040                __mos_header
+                0x00040045                __start
+                0x000400b8                __start._main
+ .fini          0x000400bb       0xbe /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+                0x000400bb                ___exithl
+                0x000400bd                _exit
+                0x0004011c                __Exit
+                0x00040120                _abort
+ .init.bss      0x00040179       0x11 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+ .init.args     0x0004018a       0x4a /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+                0x0004018a                _parse_option
+                0x0004018a                _parse_params
+
+.text           0x000401d4      0xa05
+ *(.text)
+ .text          0x000401d4        0x0 obj/blobs.o
+ .text          0x000401d4      0x158 obj/lzss.o
+                0x000401d4                _lzss_decompress
+ .text          0x0004032c      0x4b1 obj/main.o
+                0x0004032c                _main
+ .text          0x000407dd       0x25 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_cursor_enable.o)
+                0x000407dd                _vdp_cursor_enable
+ .text          0x00040802       0x33 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_volume.o)
+                0x00040802                _vdp_audio_set_volume
+ .text          0x00040835       0x4d /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_play_note.o)
+                0x00040835                _vdp_audio_play_note
+ .text          0x00040882       0x33 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_waveform.o)
+                0x00040882                _vdp_audio_set_waveform
+ .text          0x000408b5       0x29 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_reset_channel.o)
+                0x000408b5                _vdp_audio_reset_channel
+ .text          0x000408de       0x3a /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_mode.o)
+                0x000408de                _vdp_mode
+ .text          0x00040918       0x2c /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+                0x00040918                _atexit
+                0x00040918                _on_exit
+ .text          0x00040944        0xc /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_getsysvar_keyascii.o)
+                0x00040944                _getsysvar_keyascii
+ .text          0x00040950       0x13 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_waitvblank.o)
+                0x00040950                _waitvblank
+ .text          0x00040963       0x19 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_puts.o)
+                0x00040963                _mos_puts
+ .text          0x0004097c       0x13 /Users/alice/dev/agondev/agondev/lib/libagon.a(smulu.o)
+                0x0004097c                __smuls
+                0x0004097c                __smulu
+ .text          0x0004098f       0x26 /Users/alice/dev/agondev/agondev/lib/libagon.a(ishl.o)
+                0x0004098f                __sshl
+                0x0004098f                __ishl
+ .text          0x000409b5        0xb /Users/alice/dev/agondev/agondev/lib/libagon.a(frameset0.o)
+                0x000409b5                __frameset0
+ .text          0x000409c0       0x30 /Users/alice/dev/agondev/agondev/lib/libagon.a(imulu.o)
+                0x000409c0                __imuls
+                0x000409c0                __imulu
+ .text          0x000409f0        0x1 /Users/alice/dev/agondev/agondev/lib/libagon.a(indcallhl.o)
+                0x000409f0                __indcallhl
+ .text          0x000409f1        0xa /Users/alice/dev/agondev/agondev/lib/libagon.a(inot.o)
+                0x000409f1                __inot
+ .text          0x000409fb        0xe /Users/alice/dev/agondev/agondev/lib/libagon.a(frameset.o)
+                0x000409fb                __frameset
+ .text          0x00040a09       0x52 /Users/alice/dev/agondev/agondev/lib/libagon.a(files.o)
+                0x00040a09                __stdio_init
+ .text          0x00040a5b        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_vdu.o)
+ .text          0x00040a5b       0xbd /Users/alice/dev/agondev/agondev/lib/libagon.a(free.c.o)
+                0x00040a5b                _free
+ .text          0x00040b18       0x9f /Users/alice/dev/agondev/agondev/lib/libagon.a(malloc.c.o)
+                0x00040b18                _malloc
+ .text          0x00040bb7       0x22 /Users/alice/dev/agondev/agondev/lib/libagon.a(sbrk.o)
+                0x00040bb7                _sbrk
+
+.init_array     0x00040bd9        0x0
+ *(.init_array)
+ .init_array    0x00040bd9        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+
+.ctors          0x00040bd9        0x0
+ *(.ctors)
+ .ctors         0x00040bd9        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+
+.dtors          0x00040bd9        0x0
+ *(.dtors)
+ .dtors         0x00040bd9        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+
+.comment        0x00000000      0x57a
+ .comment       0x00000000       0x77 obj/lzss.o
+ .comment       0x00000077       0x77 obj/main.o
+ .comment       0x000000ee       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_cursor_enable.o)
+ .comment       0x00000165       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_volume.o)
+ .comment       0x000001dc       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_play_note.o)
+ .comment       0x00000253       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_waveform.o)
+ .comment       0x000002ca       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_reset_channel.o)
+ .comment       0x00000341       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_mode.o)
+ .comment       0x000003b8       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(files.o)
+ .comment       0x0000042f       0x77 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_vdu.o)
+ .comment       0x000004a6       0x6a /Users/alice/dev/agondev/agondev/lib/libagon.a(free.c.o)
+ .comment       0x00000510       0x6a /Users/alice/dev/agondev/agondev/lib/libagon.a(malloc.c.o)
+
+.fini_array     0x00040bd9        0x0
+ *(.fini_array)
+ .fini_array    0x00040bd9        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+
+.rodata         0x00040bd9     0xa260
+ *(.rodata)
+ .rodata        0x00040bd9     0xa20a obj/blobs.o
+                0x00040bd9                _setup_data
+                0x00040be4                _cube_compressed
+                0x00040be4                _setup_data_end
+                0x000425e1                _cube_compressed_end
+                0x000425e1                _torus_compressed
+                0x0004ade3                _torus_compressed_end
+ .rodata        0x0004ade3       0x4a obj/main.o
+ .rodata        0x0004ae2d        0xc /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+
+.data           0x0004ae39       0xd3
+ *(.data)
+ .data          0x0004ae39        0x0 obj/blobs.o
+ .data          0x0004ae39        0x0 obj/lzss.o
+ .data          0x0004ae39        0x3 obj/main.o
+ .data          0x0004ae3c        0x3 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_cursor_enable.o)
+ .data          0x0004ae3f        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_volume.o)
+ .data          0x0004ae3f        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_play_note.o)
+ .data          0x0004ae3f        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_waveform.o)
+ .data          0x0004ae3f        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_reset_channel.o)
+ .data          0x0004ae3f        0x2 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_mode.o)
+ .data          0x0004ae41       0x36 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+                0x0004ae74                _exit.sp
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_getsysvar_keyascii.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_waitvblank.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_puts.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(smulu.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(ishl.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(frameset0.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(imulu.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(indcallhl.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(inot.o)
+ .data          0x0004ae77        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(frameset.o)
+ .data          0x0004ae77        0xf /Users/alice/dev/agondev/agondev/lib/libagon.a(files.o)
+                0x0004ae77                _stdin
+                0x0004ae7c                _stdout
+                0x0004ae81                _stderr
+ .data          0x0004ae86       0x83 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_vdu.o)
+                0x0004ae86                _vdu_sprite_select
+                0x0004ae8a                _vdu_sprite_clear
+                0x0004ae8d                _vdu_sprite_add_bitmap
+                0x0004ae91                _vdu_sprite_activate
+                0x0004ae95                _vdu_adv_write_block
+                0x0004ae9d                _vdu_adv_call_buffer
+                0x0004aea3                _vdu_adv_call_conditional
+                0x0004aeae                _vdu_adv_jump_offset
+                0x0004aeb7                _vdu_adv_jump_offset_block
+                0x0004aec2                _vdu_audio_b_w
+                0x0004aeca                _vdu_audio_b_w_w
+                0x0004aed4                _vdu_audio
+                0x0004aed9                _vdu_audio_w
+                0x0004aee0                _vdu_audio_b_ww
+                0x0004aee9                _vdu_audio_b_w_ww
+                0x0004aef4                _vdu_audio_ww
+                0x0004aefc                _vdu_audio_b_b
+                0x0004af03                _vdu_audio_b
+ .data          0x0004af09        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(free.c.o)
+ .data          0x0004af09        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(malloc.c.o)
+ .data          0x0004af09        0x3 /Users/alice/dev/agondev/agondev/lib/libagon.a(sbrk.o)
+                0x0004af09                __sbrkbase
+
+.bss            0x0004af0c    0x2062e
+                0x0004af0c                        bss_start = .
+ *(.bss .bss*)
+ .bss           0x0004af0c        0x0 obj/blobs.o
+ .bss           0x0004af0c        0x0 obj/lzss.o
+ .bss           0x0004af0c    0x20600 obj/main.o
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_cursor_enable.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_volume.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_play_note.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_set_waveform.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_audio_reset_channel.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_mode.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(crt0.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_getsysvar_keyascii.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_waitvblank.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(mos_puts.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(smulu.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(ishl.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(frameset0.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(imulu.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(indcallhl.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(inot.o)
+ .bss           0x0006b50c        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(frameset.o)
+ .bss           0x0006b50c       0x28 /Users/alice/dev/agondev/agondev/lib/libagon.a(files.o)
+                0x0006b50c                __file_streams
+ .bss           0x0006b534        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(vdp_vdu.o)
+ .bss           0x0006b534        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(free.c.o)
+ .bss           0x0006b534        0x6 /Users/alice/dev/agondev/agondev/lib/libagon.a(malloc.c.o)
+                0x0006b534                __alloc_base
+ .bss           0x0006b53a        0x0 /Users/alice/dev/agondev/agondev/lib/libagon.a(sbrk.o)
+                0x0006b53a                        bss_end = .
+                0x000b0000                        __stack = (RAM_START + RAM_SIZE)
+                0x0004af0c                        ___low_bss = bss_start
+                0x0002062e                        ___len_bss = SIZEOF (.bss)
+                0x0006b53a                        ___heapbot = bss_end
+                0x000b0000                        ___heaptop = (RAM_START + RAM_SIZE)
+                0x00000001                        ___run_clearbss = (___len_bss > 0x0)
+                0x00000000                        ___init_array_count = (SIZEOF (.init_array) / 0x3)
+                0x00000000                        ___ctors_count = (SIZEOF (.ctors) / 0x3)
+                0x00000000                        ___dtors_count = (SIZEOF (.dtors) / 0x3)
+                0x00000000                        ___fini_array_count = (SIZEOF (.fini_array) / 0x3)
+                0x00000000                        ___init_count = (___init_array_count + ___ctors_count)
+                0x00000000                        ___fini_count = (___dtors_count + ___fini_array_count)
+                0x00000000                        ___run_init = (___init_count > 0x0)
+                0x00000000                        ___run_fini = (___fini_count > 0x0)
+                0x00000100                        ___init_count_a = ((((___init_count - 0x1) >> 0x10) & 0xff) + 0x1)
+                0x00000100                        ___init_count_b = (((___init_count - 0x1) & 0xff) + 0x1)
+                0x00000100                        ___init_count_c = ((((___init_count - 0x1) >> 0x8) & 0xff) + 0x1)
+                0x00000100                        ___fini_count_a = ((((___fini_count - 0x1) >> 0x10) & 0xff) + 0x1)
+                0x00000100                        ___fini_count_b = (((___fini_count - 0x1) & 0xff) + 0x1)
+                0x00000100                        ___fini_count_c = ((((___fini_count - 0x1) >> 0x8) & 0xff) + 0x1)
+                0x00040bd9                        ___init_array_functions = (SIZEOF (.init_array) + ADDR (.init_array))
+                0x00040bd9                        ___init_ctors_functions = (SIZEOF (.ctors) + ADDR (.ctors))
+                0x00040bd9                        ___fini_dtors_functions = (SIZEOF (.dtors) + ADDR (.dtors))
+                0x00040bd9                        ___fini_array_functions = (SIZEOF (.fini_array) + ADDR (.fini_array))
+LOAD obj/blobs.o
+LOAD obj/lzss.o
+LOAD obj/main.o
+LOAD /Users/alice/dev/agondev/agondev/lib/libagon.a
+OUTPUT(bin/vivid.noname.bin binary)

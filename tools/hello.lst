@@ -1,0 +1,72 @@
+PC     Output      Line
+040000             0001  ;
+040000             0002  ; hello.asm — Minimal MOS "Hello World" to validate toolchain
+040000             0003  ;
+040000             0004  ; Assembled with: ez80asm hello.asm hello.bin
+040000             0005  ;
+040000             0006  
+040000             0007  			.ASSUME	ADL = 1
+040000             0008  
+040000 C3 45 00 04 0009  			JP	_start			; Jump over header
+040004             0010  
+040004 68 65 6C 6C 0011  _exec_name:		DB	"hello.bin",0		; Executable name
+       6F 2E 62 69 
+       6E 00       
+04000E             0012  
+04000E FF FF FF FF 0013  			ALIGN	64
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF FF FF 
+       FF FF       
+040040             0014  
+040040 4D 4F 53    0015  			DB	"MOS"			; MOS magic
+040043 00          0016  			DB	00h			; Header version 0
+040044 01          0017  			DB	01h			; ADL mode
+040045             0018  
+040045             0019  _start:
+040045 F5          0020  			PUSH	AF
+040046 C5          0021  			PUSH	BC
+040047 D5          0022  			PUSH	DE
+040048 DD E5       0023  			PUSH	IX
+04004A FD E5       0024  			PUSH	IY
+04004C             0025  
+04004C ED 6E       0026  			LD	A, MB			; Save MB
+04004E F5          0027  			PUSH	AF
+04004F AF          0028  			XOR	A
+040050 ED 6D       0029  			LD	MB, A			; Clear MB for 24-bit MOS API
+040052             0030  
+040052             0031  			; Print "Hello from eZ80!" one char at a time via RST $10
+040052 21 6A 00 04 0032  			LD	HL, msg
+040056             0033  _loop:
+040056 7E          0034  			LD	A, (HL)
+040057 B7          0035  			OR	A			; end of string?
+040058 28 05       0036  			JR	Z, _done
+04005A 5B D7       0037  			RST.LIL	10h		; Send char to VDP
+04005C 23          0038  			INC	HL
+04005D 18 F7       0039  			JR	_loop
+04005F             0040  
+04005F             0041  _done:
+04005F F1          0042  			POP	AF
+040060 ED 6D       0043  			LD	MB, A			; Restore MB
+040062 FD E1       0044  			POP	IY
+040064 DD E1       0045  			POP	IX
+040066 D1          0046  			POP	DE
+040067 C1          0047  			POP	BC
+040068 F1          0048  			POP	AF
+040069 C9          0049  			RET
+04006A             0050  
+04006A 48 65 6C 6C 0051  msg:			DB	"Hello from eZ80 ADL mode!", 13, 10, 0
+       6F 20 66 72 
+       6F 6D 20 65 
+       5A 38 30 20 
+       41 44 4C 20 
+       6D 6F 64 65 
+       21 0D 0A 00 
