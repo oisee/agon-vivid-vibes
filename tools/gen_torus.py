@@ -13,6 +13,7 @@ to the Agon 64-colour palette.
 import argparse
 import json
 import math
+import os
 import struct
 import sys
 import time
@@ -359,6 +360,58 @@ def write_vdp_file(filename: str, frames: list[bytes], mode: int, fps: int) -> N
     print(f"[gen_torus] Wrote {len(frames)} frames to {filename}", file=sys.stderr)
 
 
+def write_vdu_file(filename: str, frames: list[bytes], mode: int) -> None:
+    """Write frames to a .vdu replay file (VSYNC-chunked format).
+
+    Format (agon-vdp --replay compatible):
+        Repeated: [len: u16-LE] [data: len bytes]
+        EOF:      [0x0000]
+
+    First chunk is setup (General Poll + mode + pixel coords + cursor off).
+    A few NOP chunks let the mode switch settle.
+    Each subsequent chunk is one animation frame.
+    """
+    # Phase 1: General Poll + mode switch
+    phase1 = VDPStream()
+    phase1.general_poll()
+    phase1.mode(mode)
+    phase1_bytes = phase1.get_bytes()
+
+    # Phase 2: pixel coords + cursor off (AFTER mode switch settles)
+    # Mode switch resets logicalCoords, so this must come later
+    phase2 = VDPStream()
+    phase2.set_logical_coords(False)
+    phase2.cursor(False)
+    phase2_bytes = phase2.get_bytes()
+
+    # VDU 0 = null character (no-op), used as filler for settle vsyncs
+    nop = bytes([0])
+
+    with open(filename, "wb") as f:
+        # Phase 1: mode switch
+        f.write(struct.pack("<H", len(phase1_bytes)))
+        f.write(phase1_bytes)
+        # NOP chunks to let mode switch settle (5 vsyncs)
+        for _ in range(5):
+            f.write(struct.pack("<H", len(nop)))
+            f.write(nop)
+        # Phase 2: pixel coords (after mode settled)
+        f.write(struct.pack("<H", len(phase2_bytes)))
+        f.write(phase2_bytes)
+        # One more settle vsync
+        f.write(struct.pack("<H", len(nop)))
+        f.write(nop)
+        # Frame chunks
+        for frame_data in frames:
+            f.write(struct.pack("<H", len(frame_data)))
+            f.write(frame_data)
+        # EOF marker
+        f.write(struct.pack("<H", 0))
+
+    total = os.path.getsize(filename)
+    print(f"[gen_torus] Wrote {len(frames)} frames to {filename} ({total:,}B)", file=sys.stderr)
+
+
 def run_preview(frames_iter, total_frames: int, port: int, verbose: bool = False) -> None:
     """Stream frames live to agon-vdp-sdl via fake_ez80 server."""
     from fake_ez80 import FakeEz80Server
@@ -415,6 +468,8 @@ def main():
                         help="Stream live to agon-vdp-sdl via TCP")
     parser.add_argument("--output", "-o", type=str, default=None,
                         help="Save to .vdp file")
+    parser.add_argument("--vdu", type=str, default=None,
+                        help="Save to .vdu replay file (agon-vdp --replay format)")
     parser.add_argument("--port", type=int, default=5001,
                         help="TCP port for preview (default: 5001)")
     parser.add_argument("--segments", type=int, default=8,
@@ -427,8 +482,8 @@ def main():
                         help="Verbose protocol logging")
     args = parser.parse_args()
 
-    if not args.html and not args.preview and not args.output:
-        parser.error("Specify --html FILE, --preview, and/or --output FILE")
+    if not args.html and not args.preview and not args.output and not args.vdu:
+        parser.error("Specify --html FILE, --preview, --output FILE, and/or --vdu FILE")
 
     seg = args.segments
     num_frames = args.frames
@@ -459,8 +514,10 @@ def main():
 
         if args.output:
             write_vdp_file(args.output, all_vdp_frames, SCREEN_MODE, args.fps)
+        if args.vdu:
+            write_vdu_file(args.vdu, all_vdp_frames, SCREEN_MODE)
 
-    elif args.output:
+    elif args.output or args.vdu:
         t0 = time.time()
         frame_bytes = []
         for i, (vdp_stream, _canvas_tris) in enumerate(frame_generator()):
@@ -469,7 +526,10 @@ def main():
                 print(f"[gen_torus] Generated {i + 1}/{num_frames} frames", file=sys.stderr)
         elapsed = time.time() - t0
         print(f"[gen_torus] Generation took {elapsed:.1f}s", file=sys.stderr)
-        write_vdp_file(args.output, frame_bytes, SCREEN_MODE, args.fps)
+        if args.output:
+            write_vdp_file(args.output, frame_bytes, SCREEN_MODE, args.fps)
+        if args.vdu:
+            write_vdu_file(args.vdu, frame_bytes, SCREEN_MODE)
 
     if args.preview:
         run_preview(frame_generator(), num_frames, args.port, args.verbose)
