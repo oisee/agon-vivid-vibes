@@ -25,6 +25,10 @@ __pycache__/
 tools/*.html
 tools/*.vdp
 
+# Large audio files
+assets/music/
+badapple/music/*.wav
+
 # Reference repos
 ref/
 assets/badapple-frames/
